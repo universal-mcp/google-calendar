@@ -1,4 +1,5 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+
 from typing import Any
 from loguru import logger
 
@@ -66,7 +67,7 @@ class GoogleCalendarApp(APIApplication):
         Tags:
             fetch, list, calendar, events, date-time, important, api, formatting
         """
-        today = datetime.utcnow().date()
+        today = datetime.now(timezone.utc).date()
         end_date = today + timedelta(days=days)
         time_min = f"{today.isoformat()}T00:00:00Z"
         time_max = f"{end_date.isoformat()}T00:00:00Z"
