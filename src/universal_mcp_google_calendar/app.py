@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta, timezone
-
-from typing import Any
+from typing import Any, Optional
 from loguru import logger
 
 from universal_mcp.applications.application import APIApplication
@@ -294,6 +293,56 @@ class GoogleCalendarApp(APIApplication):
                 f"\nMore events available. Use page_token='{next_token}' to see more."
             )
         return result
+
+    def add_an_event(
+        self,
+        start: dict[str, Any],
+        end: dict[str, Any],
+        summary: str,
+        description: Optional[str] = None,
+        location: Optional[str] = None,
+        attendees: Optional[list[dict[str, str]]] = None,
+        calendar_id: str = "primary",
+    ) -> dict[str, Any]:
+        """
+        Creates a new calendar event using the Google Calendar API events.insert endpoint.
+
+        Args:
+            start: Start time of the event (required). Example: {"dateTime": "2025-08-7T16:30:00+05:30"}
+            end: End time of the event (required). Example: {"dateTime": "2025-08-7T17:30:00+05:30"}
+            summary: Event title/summary (required). Example: "New"
+            description: Event description. Example: "hey"
+            location: Event location. Example: "Delhi"
+            attendees: List of attendee dictionaries. Example: [{"email": "example@gmail.com"}]
+            calendar_id: Calendar identifier (default: "primary")
+            
+        Returns:
+            Dictionary containing the complete API response with the created event details
+
+        Raises:
+            HTTPError: Raised when the API request fails or returns an error status code
+
+        Tags:
+            create, calendar, event, insert, important
+        """
+    
+            
+        request_body_data = {
+            'start': start,
+            'end': end,
+            'summary': summary,
+            'description': description,
+            'location': location,
+            'attendees': attendees,
+        }
+        request_body_data = {k: v for k, v in request_body_data.items() if v is not None}
+            
+        url = f"{self.base_url}/calendars/{calendar_id}/events"
+        
+        response = self._post(url, data=request_body_data)
+        
+        
+        return self._handle_response(response)
 
     def quick_add_event(self, text: str, send_updates: str = "none") -> str:
         """
