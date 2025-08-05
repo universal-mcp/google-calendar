@@ -47,10 +47,10 @@ class GoogleCalendarApp(APIApplication):
             return f"{dt_string} (All day)"
 
     def get_today_events(
-        self, days: int = 1, max_results: int = None, time_zone: str = None
-    ) -> str:
+        self, days: int = 1, max_results: Optional[int] = None, time_zone: Optional[str] = None
+    ) -> dict[str, Any]:
         """
-        Retrieves and formats events from Google Calendar for today or a specified number of future days, with optional result limiting and timezone specification.
+        Retrieves events from Google Calendar for today or a specified number of future days.
 
         Args:
             days: Number of days to retrieve events for (default: 1, which is just today)
@@ -58,13 +58,13 @@ class GoogleCalendarApp(APIApplication):
             time_zone: Time zone used in the response (optional, default is calendar's time zone)
 
         Returns:
-            A formatted string containing a list of calendar events with their times and IDs, or a message indicating no events were found
+            Dictionary containing the complete API response with all events and metadata
 
         Raises:
             HTTPError: Raised when the API request fails or returns an error status code
 
         Tags:
-            fetch, list, calendar, events, date-time, important, api, formatting
+            fetch, list, calendar, events, date-time, important, api
         """
         today = datetime.now(timezone.utc).date()
         end_date = today + timedelta(days=days)
@@ -84,51 +84,14 @@ class GoogleCalendarApp(APIApplication):
         date_range = "today" if days == 1 else f"the next {days} days"
         logger.info(f"Retrieving calendar events for {date_range}")
         response = self._get(url, params=params)
-        response.raise_for_status()
-        events = response.json().get("items", [])
-        if not events:
-            return f"No events scheduled for {date_range}."
-        result = f"Events for {date_range}:\n\n"
-        for event in events:
-            # Extract event date and time
-            start = event.get("start", {})
-            event_date = (
-                start.get("date", start.get("dateTime", "")).split("T")[0]
-                if "T" in start.get("dateTime", "")
-                else start.get("date", "")
-            )
-
-            # Extract and format time
-            start_time = start.get("dateTime", start.get("date", "All day"))
-
-            # Format the time display
-            if "T" in start_time:  # It's a datetime
-                formatted_time = self._format_datetime(start_time)
-                # For multi-day view, keep the date; for single day, just show time
-                if days > 1:
-                    time_display = formatted_time
-                else:
-                    # Extract just the time part
-                    time_display = (
-                        formatted_time.split(" ")[1]
-                        + " "
-                        + formatted_time.split(" ")[2]
-                    )
-            else:  # It's an all-day event
-                time_display = f"{event_date} (All day)" if days > 1 else "All day"
-
-            # Get event details
-            summary = event.get("summary", "Untitled event")
-            event_id = event.get("id", "No ID")
-
-            result += f"- {time_display}: {summary} (ID: {event_id})\n"
-        return result
+        
+        return self._handle_response(response)
 
     def get_event(
-        self, event_id: str, max_attendees: int = None, time_zone: str = None
-    ) -> str:
+        self, event_id: str, max_attendees: Optional[int] = None, time_zone: Optional[str] = None
+    ) -> dict[str, Any]:
         """
-        Retrieves and formats detailed information about a specific Google Calendar event by its ID
+        Retrieves detailed information about a specific Google Calendar event by its ID
 
         Args:
             event_id: The unique identifier of the calendar event to retrieve
@@ -136,14 +99,14 @@ class GoogleCalendarApp(APIApplication):
             time_zone: Optional. The time zone to use for formatting dates in the response. If None, uses the calendar's default time zone
 
         Returns:
-            A formatted string containing comprehensive event details including summary, time, location, description, creator, organizer, recurrence status, and attendee information
+            Dictionary containing the complete API response with all event details
 
         Raises:
             HTTPError: Raised when the API request fails or returns an error status code
             JSONDecodeError: Raised when the API response cannot be parsed as JSON
 
         Tags:
-            retrieve, calendar, event, format, api, important
+            retrieve, calendar, event, api, important
         """
         url = f"{self.base_api_url}/events/{event_id}"
         params = {}
@@ -153,62 +116,21 @@ class GoogleCalendarApp(APIApplication):
             params["timeZone"] = time_zone
         logger.info(f"Retrieving calendar event with ID: {event_id}")
         response = self._get(url, params=params)
-        response.raise_for_status()
-        event = response.json()
-        summary = event.get("summary", "Untitled event")
-        description = event.get("description", "No description")
-        location = event.get("location", "No location specified")
-        start = event.get("start", {})
-        end = event.get("end", {})
-        start_time = start.get("dateTime", start.get("date", "Unknown"))
-        end_time = end.get("dateTime", end.get("date", "Unknown"))
-        start_formatted = self._format_datetime(start_time)
-        end_formatted = self._format_datetime(end_time)
-        creator = event.get("creator", {}).get("email", "Unknown")
-        organizer = event.get("organizer", {}).get("email", "Unknown")
-        recurrence = "Yes" if "recurrence" in event else "No"
-        attendees = event.get("attendees", [])
-        attendee_info = ""
-        if attendees:
-            attendee_info = "\nAttendees:\n"
-            for i, attendee in enumerate(attendees, 1):
-                email = attendee.get("email", "No email")
-                name = attendee.get("displayName", email)
-                response_status = attendee.get("responseStatus", "Unknown")
-
-                status_mapping = {
-                    "accepted": "Accepted",
-                    "declined": "Declined",
-                    "tentative": "Maybe",
-                    "needsAction": "Not responded",
-                }
-
-                formatted_status = status_mapping.get(response_status, response_status)
-                attendee_info += f"  {i}. {name} ({email}) - {formatted_status}\n"
-        result = f"Event: {summary}\n"
-        result += f"ID: {event_id}\n"
-        result += f"When: {start_formatted} to {end_formatted}\n"
-        result += f"Where: {location}\n"
-        result += f"Description: {description}\n"
-        result += f"Creator: {creator}\n"
-        result += f"Organizer: {organizer}\n"
-        result += f"Recurring: {recurrence}\n"
-        result += attendee_info
-        return result
+        return self._handle_response(response)
 
     def list_events(
         self,
         max_results: int = 10,
-        time_min: str = None,
-        time_max: str = None,
-        q: str = None,
+        time_min: Optional[str] = None,
+        time_max: Optional[str] = None,
+        q: Optional[str] = None,
         order_by: str = "startTime",
         single_events: bool = True,
-        time_zone: str = None,
-        page_token: str = None,
-    ) -> str:
+        time_zone: Optional[str] = None,
+        page_token: Optional[str] = None,
+    ) -> dict[str, Any]:
         """
-        Retrieves and formats a list of events from Google Calendar with customizable filtering, sorting, and pagination options
+        Retrieves a list of events from Google Calendar with customizable filtering, sorting, and pagination options
 
         Args:
             max_results: Maximum number of events to return (default: 10, max: 2500)
@@ -221,19 +143,20 @@ class GoogleCalendarApp(APIApplication):
             page_token: Token for retrieving a specific page of results in paginated responses
 
         Returns:
-            A formatted string containing the list of events with details including summary, ID, start time, and location, or a message if no events are found
+            Dictionary containing the complete API response with all events and metadata
 
         Raises:
             HTTPError: Raised when the API request fails or returns an error status code
+            JSONDecodeError: Raised when the API response cannot be parsed as JSON
 
         Tags:
-            list, calendar, events, search, filter, pagination, format, important
+            list, retrieve, calendar, events, pagination, api, important
         """
         url = f"{self.base_api_url}/events"
         params = {
             "maxResults": max_results,
-            "singleEvents": str(single_events).lower(),
             "orderBy": order_by,
+            "singleEvents": str(single_events).lower(),
         }
         if time_min:
             params["timeMin"] = time_min
@@ -251,48 +174,8 @@ class GoogleCalendarApp(APIApplication):
             params["pageToken"] = page_token
         logger.info(f"Retrieving calendar events with params: {params}")
         response = self._get(url, params=params)
-        response.raise_for_status()
-        data = response.json()
-        events = data.get("items", [])
-        if not events:
-            return "No events found matching your criteria."
-        calendar_summary = data.get("summary", "Your Calendar")
-        time_zone_info = data.get("timeZone", "Unknown")
-        result = f"Events from {calendar_summary} (Time Zone: {time_zone_info}):\n\n"
-        for i, event in enumerate(events, 1):
-            # Get basic event details
-            event_id = event.get("id", "No ID")
-            summary = event.get("summary", "Untitled event")
-
-            # Get event times and format them
-            start = event.get("start", {})
-            start_time = start.get("dateTime", start.get("date", "Unknown"))
-
-            # Format the start time using the helper function
-            start_formatted = self._format_datetime(start_time)
-
-            # Get location if available
-            location = event.get("location", "No location specified")
-
-            # Check if it's a recurring event
-            is_recurring = "recurrence" in event
-            recurring_info = " (Recurring)" if is_recurring else ""
-
-            # Format the event information
-            result += f"{i}. {summary}{recurring_info}\n"
-            result += f"   ID: {event_id}\n"
-            result += f"   When: {start_formatted}\n"
-            result += f"   Where: {location}\n"
-
-            # Add a separator between events
-            if i < len(events):
-                result += "\n"
-        if "nextPageToken" in data:
-            next_token = data.get("nextPageToken")
-            result += (
-                f"\nMore events available. Use page_token='{next_token}' to see more."
-            )
-        return result
+        
+        return self._handle_response(response)
 
     def add_an_event(
         self,
@@ -305,7 +188,7 @@ class GoogleCalendarApp(APIApplication):
         calendar_id: str = "primary",
     ) -> dict[str, Any]:
         """
-        Creates a new calendar event using the Google Calendar API events.insert endpoint.
+        Creates a new calendar event with details like start time, end time, summary, description, location, and attendees.
 
         Args:
             start: Start time of the event (required). Example: {"dateTime": "2025-08-7T16:30:00+05:30"}
@@ -344,16 +227,16 @@ class GoogleCalendarApp(APIApplication):
         
         return self._handle_response(response)
 
-    def quick_add_event(self, text: str, send_updates: str = "none") -> str:
+    def quick_add_event(self, text: str, send_updates: str = "none") -> dict[str, Any]:
         """
-        Creates a calendar event using natural language text input and returns a formatted confirmation message with event details.
+        Creates a calendar event using natural language text input.
 
         Args:
             text: Natural language text describing the event (e.g., 'Meeting with John at Coffee Shop tomorrow 3pm-4pm')
             send_updates: Specifies who should receive event notifications: 'all', 'externalOnly', or 'none' (default)
 
         Returns:
-            A formatted string containing the confirmation message with event details including summary, time, location, and event ID
+            Dictionary containing the complete API response with the created event details
 
         Raises:
             HTTPError: Raised when the API request fails or returns an error status code
@@ -365,39 +248,21 @@ class GoogleCalendarApp(APIApplication):
         params = {"text": text, "sendUpdates": send_updates}
         logger.info(f"Creating event via quickAdd: '{text}'")
         response = self._post(url, data=None, params=params)
-        response.raise_for_status()
-        event = response.json()
-        event_id = event.get("id", "Unknown")
-        summary = event.get("summary", "Untitled event")
-        start = event.get("start", {})
-        end = event.get("end", {})
-        start_time = start.get("dateTime", start.get("date", "Unknown"))
-        end_time = end.get("dateTime", end.get("date", "Unknown"))
-        start_formatted = self._format_datetime(start_time)
-        end_formatted = self._format_datetime(end_time)
-        location = event.get("location", "No location specified")
-        result = "Successfully created event!\n\n"
-        result += f"Summary: {summary}\n"
-        result += f"When: {start_formatted}"
-        if start_formatted != end_formatted:
-            result += f" to {end_formatted}"
-        result += f"\nWhere: {location}\n"
-        result += f"Event ID: {event_id}\n"
-        result += f"\nUse get_event('{event_id}') to see full details."
-        return result
+        
+        return self._handle_response(response)
 
     def get_event_instances(
         self,
         event_id: str,
         max_results: int = 25,
-        time_min: str = None,
-        time_max: str = None,
-        time_zone: str = None,
+        time_min: Optional[str] = None,
+        time_max: Optional[str] = None,
+        time_zone: Optional[str] = None,
         show_deleted: bool = False,
-        page_token: str = None,
-    ) -> str:
+        page_token: Optional[str] = None,
+    ) -> dict[str, Any]:
         """
-        Retrieves and formats all instances of a recurring calendar event within a specified time range, showing details like time, status, and modifications for each occurrence.
+        Retrieves all instances of a recurring calendar event within a specified time range.
 
         Args:
             event_id: ID of the recurring event
@@ -409,14 +274,14 @@ class GoogleCalendarApp(APIApplication):
             page_token: Token for retrieving a specific page of results
 
         Returns:
-            A formatted string containing a list of event instances with details including time, status, instance ID, and modification information, plus pagination token if applicable.
+            Dictionary containing the complete API response with all event instances and metadata
 
         Raises:
             HTTPError: Raised when the API request fails or returns an error status code
             JSONDecodeError: Raised when the API response cannot be parsed as JSON
 
         Tags:
-            list, retrieve, calendar, events, recurring, pagination, formatting, important
+            list, retrieve, calendar, events, recurring, pagination, api, important
         """
         url = f"{self.base_api_url}/events/{event_id}/instances"
         params = {"maxResults": max_results, "showDeleted": str(show_deleted).lower()}
@@ -430,58 +295,8 @@ class GoogleCalendarApp(APIApplication):
             params["pageToken"] = page_token
         logger.info(f"Retrieving instances of recurring event with ID: {event_id}")
         response = self._get(url, params=params)
-        response.raise_for_status()
-        data = response.json()
-        instances = data.get("items", [])
-        if not instances:
-            return f"No instances found for recurring event with ID: {event_id}"
-        parent_summary = instances[0].get("summary", "Untitled recurring event")
-        result = f"Instances of recurring event: {parent_summary}\n\n"
-        for i, instance in enumerate(instances, 1):
-            # Get instance ID and status
-            instance_id = instance.get("id", "No ID")
-            status = instance.get("status", "confirmed")
-
-            # Format status for display
-            status_display = ""
-            if status == "cancelled":
-                status_display = " [CANCELLED]"
-            elif status == "tentative":
-                status_display = " [TENTATIVE]"
-
-            # Get instance time
-            start = instance.get("start", {})
-            original_start_time = instance.get("originalStartTime", {})
-
-            # Determine if this is a modified instance
-            is_modified = original_start_time and "dateTime" in original_start_time
-            modified_indicator = " [MODIFIED]" if is_modified else ""
-
-            # Get the time information
-            start_time = start.get("dateTime", start.get("date", "Unknown"))
-
-            # Format the time using the helper function
-            formatted_time = self._format_datetime(start_time)
-
-            # Format the instance information
-            result += f"{i}. {formatted_time}{status_display}{modified_indicator}\n"
-            result += f"   Instance ID: {instance_id}\n"
-
-            # Show original start time if modified
-            if is_modified:
-                orig_time = original_start_time.get(
-                    "dateTime", original_start_time.get("date", "Unknown")
-                )
-                orig_formatted = self._format_datetime(orig_time)
-                result += f"   Original time: {orig_formatted}\n"
-
-            # Add a separator between instances
-            if i < len(instances):
-                result += "\n"
-        if "nextPageToken" in data:
-            next_token = data.get("nextPageToken")
-            result += f"\nMore instances available. Use page_token='{next_token}' to see more."
-        return result
+        
+        return self._handle_response(response)
 
     def get_access_control_rule(self, calendarId, ruleId, alt=None, fields=None, key=None, oauth_token=None, prettyPrint=None, quotaUser=None, userIp=None) -> dict[str, Any]:
         """
@@ -2124,6 +1939,7 @@ class GoogleCalendarApp(APIApplication):
             self.get_today_events,
             self.list_events,
             self.quick_add_event,
+            self.add_an_event,
             self.get_event_instances,
             # Auto Generated from Openapi spec
             self.get_access_control_rule,
