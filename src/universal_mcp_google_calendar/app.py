@@ -229,7 +229,7 @@ class GoogleCalendarApp(APIApplication):
 
     def quick_add_event(self, text: str, send_updates: str = "none") -> dict[str, Any]:
         """
-        Creates a calendar event using natural language text input.
+        Creates a calendar event. Use it only when user specfies that they want to add a quick event
 
         Args:
             text: Natural language text describing the event (e.g., 'Meeting with John at Coffee Shop tomorrow 3pm-4pm')
@@ -669,46 +669,7 @@ class GoogleCalendarApp(APIApplication):
         response.raise_for_status()
         return response.json()
 
-    def insert_event(self, calendarId, eventId, alwaysIncludeEmail=None, maxAttendees=None, maxResults=None, originalStart=None, pageToken=None, showDeleted=None, timeMax=None, timeMin=None, timeZone=None, alt=None, fields=None, key=None, oauth_token=None, prettyPrint=None, quotaUser=None, userIp=None) -> Any:
-        """
-        Insert Event
-
-        Args:
-            calendarId (string): calendarId
-            eventId (string): eventId
-            alwaysIncludeEmail (string): No description provided. Example: 'true'.
-            maxAttendees (string): No description provided. Example: '54806309'.
-            maxResults (string): No description provided. Example: '54806309'.
-            originalStart (string): No description provided. Example: 'amet in'.
-            pageToken (string): No description provided. Example: 'amet in'.
-            showDeleted (string): No description provided. Example: 'true'.
-            timeMax (string): No description provided. Example: 'amet in'.
-            timeMin (string): No description provided. Example: 'amet in'.
-            timeZone (string): No description provided. Example: 'amet in'.
-            alt (string): Data format for the response. Example: 'json'.
-            fields (string): Selector specifying which fields to include in a partial response. Example: 'amet in'.
-            key (string): API key. Your API key identifies your project and provides you with API access, quota, and reports. Required unless you provide an OAuth 2.0 token. Example: 'amet in'.
-            oauth_token (string): OAuth 2.0 token for the current user. Example: 'amet in'.
-            prettyPrint (string): Returns response with indentations and line breaks. Example: 'true'.
-            quotaUser (string): An opaque string that represents a user for quota purposes. Must not exceed 40 characters. Example: 'amet in'.
-            userIp (string): Deprecated. Please use quotaUser instead. Example: 'amet in'.
-
-        Returns:
-            Any: Successful response
-
-        Tags:
-            calendars, {calendarId}, events, {eventId}
-        """
-        if calendarId is None:
-            raise ValueError("Missing required parameter 'calendarId'")
-        if eventId is None:
-            raise ValueError("Missing required parameter 'eventId'")
-        url = f"{self.base_url}/calendars/{calendarId}/events/{eventId}/instances"
-        query_params = {k: v for k, v in [('alwaysIncludeEmail', alwaysIncludeEmail), ('maxAttendees', maxAttendees), ('maxResults', maxResults), ('originalStart', originalStart), ('pageToken', pageToken), ('showDeleted', showDeleted), ('timeMax', timeMax), ('timeMin', timeMin), ('timeZone', timeZone), ('alt', alt), ('fields', fields), ('key', key), ('oauth_token', oauth_token), ('prettyPrint', prettyPrint), ('quotaUser', quotaUser), ('userIp', userIp)] if v is not None}
-        response = self._get(url, params=query_params)
-        response.raise_for_status()
-        return response.json()
-
+ 
     def move_event(self, calendarId, eventId, destination=None, sendNotifications=None, sendUpdates=None, alt=None, fields=None, key=None, oauth_token=None, prettyPrint=None, quotaUser=None, userIp=None) -> Any:
         """
         Move Event
@@ -1950,7 +1911,6 @@ class GoogleCalendarApp(APIApplication):
             self.insert_access_control_rule,
             self.watch_access_control_rules,
             self.delete_event,
-            self.insert_event,
             self.move_event,
             self.return_events_from_calendar,
             self.watch_events,
