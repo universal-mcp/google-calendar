@@ -78,7 +78,7 @@ class GoogleCalendarApp(APIApplication):
             "orderBy": "startTime",
         }
         if max_results is not None:
-            params["maxResults"] = max_results
+            params["maxResults"] = str(max_results)
         if time_zone:
             params["timeZone"] = time_zone
         date_range = "today" if days == 1 else f"the next {days} days"
@@ -154,7 +154,7 @@ class GoogleCalendarApp(APIApplication):
         """
         url = f"{self.base_api_url}/events"
         params = {
-            "maxResults": max_results,
+            "maxResults": str(max_results),
             "orderBy": order_by,
             "singleEvents": str(single_events).lower(),
         }
@@ -185,18 +185,35 @@ class GoogleCalendarApp(APIApplication):
         description: Optional[str] = None,
         location: Optional[str] = None,
         attendees: Optional[list[dict[str, str]]] = None,
+        recurrence: Optional[list[str]] = None,
         calendar_id: str = "primary",
     ) -> dict[str, Any]:
         """
-        Creates a new calendar event with details like start time, end time, summary, description, location, and attendees.
+        Creates a new calendar event with details like start time, end time, summary, description, location, attendees, and recurrence rules.
 
         Args:
-            start: Start time of the event (required). Example: {"dateTime": "2025-08-7T16:30:00+05:30"}
-            end: End time of the event (required). Example: {"dateTime": "2025-08-7T17:30:00+05:30"}
+            start: Start time of the event (required). Must include timezone offset or timeZone field. 
+                   Examples: 
+                   - {"dateTime": "2025-08-7T16:30:00+05:30"} (with offset)
+                   - {"dateTime": "2025-08-7T16:30:00", "timeZone": "Asia/Kolkata"} (with timeZone field)
+                   - {"dateTime": "2025-08-7T16:30:00Z", "timeZone": "UTC"} (UTC time)
+            end: End time of the event (required). Must include timezone offset or timeZone field.
+                 Examples:
+                 - {"dateTime": "2025-08-7T17:30:00+05:30"} (with offset)
+                 - {"dateTime": "2025-08-7T17:30:00", "timeZone": "Asia/Kolkata"} (with timeZone field)
+                 - {"dateTime": "2025-08-7T17:30:00Z", "timeZone": "UTC"} (UTC time)
             summary: Event title/summary (required). Example: "New"
             description: Event description. Example: "hey"
             location: Event location. Example: "Delhi"
             attendees: List of attendee dictionaries. Example: [{"email": "example@gmail.com"}]
+            recurrence: List of RRULE, RDATE, or EXDATE strings for recurring events (optional). 
+                       Example: ["RRULE:FREQ=WEEKLY;COUNT=5;BYDAY=TU,FR"],
+                       # For an all-day event starting on June 1st, 2015 and repeating every 3 days throughout the month,excluding June 10th but including June 9th and 11th:
+                       Example: [
+                           "EXDATE;VALUE=DATE:20150610",
+                           "RDATE;VALUE=DATE:20150609,20150611",
+                           "RRULE:FREQ=DAILY;UNTIL=20150628;INTERVAL=3"
+                       ],
             calendar_id: Calendar identifier (default: "primary")
             
         Returns:
@@ -206,7 +223,7 @@ class GoogleCalendarApp(APIApplication):
             HTTPError: Raised when the API request fails or returns an error status code
 
         Tags:
-            create, calendar, event, insert, important
+            create, calendar, event, insert, recurring, important
         """
     
             
@@ -217,6 +234,7 @@ class GoogleCalendarApp(APIApplication):
             'description': description,
             'location': location,
             'attendees': attendees,
+            'recurrence': recurrence,
         }
         request_body_data = {k: v for k, v in request_body_data.items() if v is not None}
             
@@ -284,7 +302,7 @@ class GoogleCalendarApp(APIApplication):
             list, retrieve, calendar, events, recurring, pagination, api, important
         """
         url = f"{self.base_api_url}/events/{event_id}/instances"
-        params = {"maxResults": max_results, "showDeleted": str(show_deleted).lower()}
+        params = {"maxResults": str(max_results), "showDeleted": str(show_deleted).lower()}
         if time_min:
             params["timeMin"] = time_min
         if time_max:
@@ -1817,6 +1835,24 @@ class GoogleCalendarApp(APIApplication):
         response.raise_for_status()
         return response.json()
 
+    def get_user_timezone(self) -> dict[str, Any]:
+        """
+        Gets the user's calendar timezone setting to help with timezone-aware event creation.
+
+        Returns:
+            Dictionary containing the user's timezone information
+
+        Raises:
+            HTTPError: Raised when the API request fails or returns an error status code
+
+        Tags:
+            get, calendar, timezone, settings, important
+        """
+        url = f"{self.base_api_url}"
+        logger.info("Retrieving user's calendar timezone settings")
+        response = self._get(url)
+        return self._handle_response(response)
+
     def get_calendar_colors(self, alt=None, fields=None, key=None, oauth_token=None, prettyPrint=None, quotaUser=None, userIp=None) -> dict[str, Any]:
         """
         Get Calendar Colors
@@ -1902,6 +1938,7 @@ class GoogleCalendarApp(APIApplication):
             self.quick_add_event,
             self.add_an_event,
             self.get_event_instances,
+            self.get_user_timezone,
             # Auto Generated from Openapi spec
             self.get_access_control_rule,
             self.update_access_control_rule,
