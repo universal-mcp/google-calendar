@@ -14,35 +14,8 @@ This is automatically generated from OpenAPI schema for the GoogleCalendarApp AP
 | `list_events` | Retrieves a list of events from Google Calendar with customizable filtering, sorting, and pagination options |
 | `quick_add_event` | Creates a calendar event. Use it only when user specfies that they want to add a quick event |
 | `add_an_event` | Creates a new calendar event with details like start time, end time, summary, description, location, attendees, and recurrence rules. |
+| `update_event` | Updates an existing calendar event. This method updates the entire event resource. |
 | `get_event_instances` | Retrieves all instances of a recurring calendar event within a specified time range. |
 | `get_user_timezone` | Gets the user's calendar timezone setting to help with timezone-aware event creation. |
-| `get_access_control_rule` | Get Access Control Rule |
-| `update_access_control_rule` | Update Access Control Rule |
-| `delete_access_control_rule` | Delete Access Control Rule |
-| `patch_access_control_rule` | Patch Access Control Rule |
-| `return_access_control_rules` | Return Access Control Rules |
-| `insert_access_control_rule` | Insert Access Control Rule |
-| `watch_access_control_rules` | Watch Access Control Rules |
-| `delete_event` | Delete Event |
-| `move_event` | Move Event |
-| `return_events_from_calendar` | Return Events from Calendar |
-| `watch_events` | Watch Events |
-| `get_calendar` | Get Calendar |
-| `update_calendar` | Update Calendar |
-| `delete_calendar` | Delete Calendar |
-| `patch_calendar` | Patch Calendar |
-| `clear_calendar` | Clear Calendar |
-| `calendar` | Calendar |
-| `get_calendar_list` | Get Calendar List |
-| `update_calendar_list` | Update Calendar List |
-| `remove_calendar_on_list` | Remove Calendar on List |
-| `patch_calendar_list` | Patch Calendar List |
-| `insert_calendar_on_list` | Insert Calendar on List |
-| `list_calendars` | List Calendars |
-| `watch_calendar_list` | Watch Calendar List |
-| `list_calendar_settings` | List Calendar Settings |
-| `get_calendar_settings` | Get Calendar Settings |
-| `watch_calendar_settings` | Watch Calendar Settings |
-| `stop_calendar_channel` | Stop Calendar Channel |
-| `get_calendar_colors` | Get Calendar Colors |
-| `query_free_busy` | Query Free Busy |
+| `delete_event` | Deletes an event from the specified calendar. |
+| `query_free_busy` | Checks if you have free slots or not by querying the free/busy status of your calendars. |
