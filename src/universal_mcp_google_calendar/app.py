@@ -190,6 +190,7 @@ class GoogleCalendarApp(APIApplication):
     ) -> dict[str, Any]:
         """
         Creates a new calendar event with details like start time, end time, summary, description, location, attendees, and recurrence rules.
+        Always check the timezone using get_user_timezone before creating an event.
 
         Args:
             start: Start time of the event (required). Must include timezone offset or timeZone field. 
